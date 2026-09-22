@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Klassen-Konverter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f7f8;
+    --card-bg: #ffffff;
+    --text: #1a1a1a;
+    --text-muted: #63666b;
+    --border: #e2e2e6;
+    --accent: #2d6a4f;
+    --accent-hover: #1f4d38;
+    --accent-contrast: #ffffff;
+    --danger: #b3261e;
+    --table-head-bg: #eef2ef;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181a;
+      --card-bg: #202124;
+      --text: #eaeaea;
+      --text-muted: #a0a3a8;
+      --border: #35363a;
+      --accent: #4caf7d;
+      --accent-hover: #63c491;
+      --accent-contrast: #0f1210;
+      --danger: #ff6b60;
+      --table-head-bg: #262a27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181a;
+    --card-bg: #202124;
+    --text: #eaeaea;
+    --text-muted: #a0a3a8;
+    --border: #35363a;
+    --accent: #4caf7d;
+    --accent-hover: #63c491;
+    --accent-contrast: #0f1210;
+    --danger: #ff6b60;
+    --table-head-bg: #262a27;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 6px;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin: 0 0 24px;
+  }
+  .privacy-note {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: var(--table-head-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 1.05rem;
+    margin: 0 0 14px;
+  }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--table-head-bg);
+  }
+  .dropzone p {
+    margin: 4px 0;
+  }
+  .dropzone .filename {
+    font-weight: 600;
+    color: var(--accent);
+    word-break: break-all;
+  }
+  input[type="file"] { display: none; }
+  .options {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  label { font-size: 0.92rem; }
+  select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+  input[type="checkbox"] { width: 16px; height: 16px; }
+  button {
+    appearance: none;
+    border: none;
+    border-radius: 9px;
+    padding: 11px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  #status {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-top: 12px;
+    white-space: pre-wrap;
+  }
+  #status.error { color: var(--danger); }
+  .table-scroll {
+    overflow-x: auto;
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  th {
+    background: var(--table-head-bg);
+    position: sticky;
+    top: 0;
+  }
+  .note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 10px 0 0;
+  }
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 30px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Klassen-Konverter</h1>
+  <p class="subtitle">Wandelt eine .ods-Tabelle mit Lehrerkürzel + kommagetrennten Klassen in eine Zeile-pro-Klasse-Tabelle um (nur Klassenstufen 5–9).</p>
+
+  <div class="privacy-note">
+    🔒
+    <div>Alles läuft nur in deinem Browser. Die Datei wird nicht hochgeladen und es werden keine Daten irgendwohin gesendet – nur die JavaScript-Bibliothek zum Lesen/Schreiben der Tabelle wird einmalig von cdnjs geladen.</div>
+  </div>
+
+  <div class="card">
+    <h2>1. Datei auswählen</h2>
+    <div class="dropzone" id="dropzone">
+      <p>📄 Klicke hier oder ziehe deine <strong>.ods</strong>-Datei hinein</p>
+      <p class="filename" id="filenameLabel"></p>
+    </div>
+    <input type="file" id="fileInput" accept=".ods,.xlsx,.xls,.csv">
+
+    <div class="options">
+      <div class="row">
+        <label for="sheetSelect">Tabellenblatt:</label>
+        <select id="sheetSelect" disabled></select>
+      </div>
+      <div class="row">
+        <input type="checkbox" id="headerCheckbox">
+        <label for="headerCheckbox">Erste Zeile ist eine Überschrift (wird ignoriert)</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Konvertieren</h2>
+    <p class="note" style="margin-top:0">
+      Erwartet wird: Spalte A = Lehrerkürzel, Spalte B = Klassen, kommagetrennt (z. B. „5a,5b,5c“).
+      Ausgabe: Spalte A = Klasse, Spalte B = Lehrerkürzel — eine Zeile pro Klasse. Es werden nur Klassen übernommen, deren Bezeichnung mit einer Ziffer 5–9 beginnt.
+    </p>
+    <div class="actions">
+      <button id="convertBtn" disabled>Konvertieren</button>
+      <button id="downloadBtn" class="secondary" disabled>Konvertierte .ods herunterladen</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card" id="previewCard" style="display:none;">
+    <h2>Vorschau</h2>
+    <div class="table-scroll" id="preview"></div>
+  </div>
+
+  <footer>Läuft vollständig lokal im Browser · keine Daten verlassen dieses Gerät</footer>
+</div>
+
+<script>
+(function () {
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const filenameLabel = document.getElementById('filenameLabel');
+  const sheetSelect = document.getElementById('sheetSelect');
+  const headerCheckbox = document.getElementById('headerCheckbox');
+  const convertBtn = document.getElementById('convertBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const statusEl = document.getElementById('status');
+  const previewCard = document.getElementById('previewCard');
+  const previewEl = document.getElementById('preview');
+
+  let workbook = null;
+  let resultWorkbook = null;
+  let originalBaseName = 'klassen';
+
+  function setStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('error', !!isError);
+  }
+
+  if (typeof XLSX === 'undefined') {
+    setStatus('Die Tabellen-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und die Seite neu laden.', true);
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('drag-over');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  async function handleFile(file) {
+    originalBaseName = file.name.replace(/\.[^.]+$/, '') || 'klassen';
+    filenameLabel.textContent = file.name;
+    resultWorkbook = null;
+    downloadBtn.disabled = true;
+    previewCard.style.display = 'none';
+    try {
+      const buf = await file.arrayBuffer();
+      workbook = XLSX.read(buf, { type: 'array' });
+      populateSheetSelect();
+      convertBtn.disabled = false;
+      setStatus('Datei geladen: ' + file.name + ' (' + workbook.SheetNames.length + ' Tabellenblatt' + (workbook.SheetNames.length === 1 ? '' : 'blätter') + ').', false);
+    } catch (err) {
+      convertBtn.disabled = true;
+      setStatus('Fehler beim Lesen der Datei: ' + err.message, true);
+      console.error(err);
+    }
+  }
+
+  function populateSheetSelect() {
+    sheetSelect.innerHTML = '';
+    workbook.SheetNames.forEach((name) => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sheetSelect.appendChild(opt);
+    });
+    sheetSelect.disabled = false;
+  }
+
+  convertBtn.addEventListener('click', () => {
+    if (!workbook) return;
+    try {
+      const sheetName = sheetSelect.value || workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      let rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+
+      if (headerCheckbox.checked && rows.length > 0) {
+        rows = rows.slice(1);
+      }
+
+      const outputRows = [];
+      let skipped = 0;
+      let totalClasses = 0;
+      let emptyRows = 0;
+
+      rows.forEach((row) => {
+        const kuerzel = (row[0] !== undefined ? row[0] : '').toString().trim();
+        const klassenRaw = (row[1] !== undefined ? row[1] : '').toString().trim();
+        if (!kuerzel && !klassenRaw) { emptyRows++; return; }
+        const klassen = klassenRaw.split(',').map((k) => k.trim()).filter((k) => k.length > 0);
+        klassen.forEach((klasse) => {
+          totalClasses++;
+          if (/^[5-9]/.test(klasse)) {
+            outputRows.push([klasse, kuerzel]);
+          } else {
+            skipped++;
+          }
+        });
+      });
+
+      const newSheet = XLSX.utils.aoa_to_sheet(outputRows);
+      resultWorkbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(resultWorkbook, newSheet, 'Konvertiert');
+
+      setStatus(
+        'Fertig: ' + outputRows.length + ' Zeile(n) erzeugt (Klassenstufe 5–9).\n' +
+        skipped + ' Klasse(n) ausgeschlossen (nicht Stufe 5–9) von insgesamt ' + totalClasses + ' gefundenen Klassen.\n' +
+        (emptyRows > 0 ? emptyRows + ' leere Zeile(n) übersprungen.' : ''),
+        false
+      );
+
+      renderPreview(outputRows);
+      downloadBtn.disabled = outputRows.length === 0;
+    } catch (err) {
+      setStatus('Fehler bei der Konvertierung: ' + err.message, true);
+      console.error(err);
+    }
+  });
+
+  function renderPreview(rows) {
+    previewEl.innerHTML = '';
+    if (rows.length === 0) {
+      previewEl.textContent = 'Keine passenden Zeilen gefunden.';
+      previewCard.style.display = 'block';
+      return;
+    }
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Klasse (Spalte A)</th><th>Lehrerkürzel (Spalte B)</th></tr>';
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    rows.slice(0, 60).forEach((r) => {
+      const tr = document.createElement('tr');
+      const tdA = document.createElement('td');
+      tdA.textContent = r[0];
+      const tdB = document.createElement('td');
+      tdB.textContent = r[1];
+      tr.appendChild(tdA);
+      tr.appendChild(tdB);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    previewEl.appendChild(table);
+    if (rows.length > 60) {
+      const note = document.createElement('p');
+      note.className = 'note';
+      note.style.padding = '8px 12px';
+      note.textContent = '… und ' + (rows.length - 60) + ' weitere Zeile(n) (vollständig in der Downloaddatei enthalten).';
+      previewEl.appendChild(note);
+    }
+    previewCard.style.display = 'block';
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (!resultWorkbook) return;
+    try {
+      const wbout = XLSX.write(resultWorkbook, { bookType: 'ods', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.oasis.opendocument.spreadsheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = originalBaseName + '_konvertiert.ods';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (err) {
+      setStatus('Fehler beim Erzeugen der Downloaddatei: ' + err.message, true);
+      console.error(err);
+    }
+  });
+})();
+</script>
+</body>
+</html>
